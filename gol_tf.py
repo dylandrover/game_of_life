@@ -39,8 +39,7 @@ neighbour_sum = tf.reshape(neighbour_sum, [dim1, dim2])
 combine = tf.multiply(neighbour_sum, alive_dead)
 less    = tf.less_equal(combine, tf.scalar_mul(6, tf.ones(shape=combine.get_shape())))
 greater = tf.greater_equal(combine, tf.scalar_mul(3, tf.ones(shape=combine.get_shape())))
-and_    = tf.cast(tf.logical_and(greater,less, name='new_state'), tf.int32)
-
+env     = tf.cast(tf.logical_and(greater,less, name='new_state'), tf.int32)
 
 '''
 life_summary = tf.summary.image('grid',and_)
@@ -53,15 +52,12 @@ sess = tf.InteractiveSession()
 
 summary_writer = tf.summary.FileWriter('./tmp/logs/')
 
+sess.run(init)
+
 for i in range(gen):
-    sess.run(init)
-    sess.run(and_)
+    sess.run(env)
     #summary_writer.add_summary(merged, i)
-    #env = and_
     # think about using a feed dictionary to update and give inputs
-    print(less.eval(session=sess))
-    print(greater.eval(session=sess))
-    print(and_.eval(session=sess))
     
     time.sleep(0.5)
     
