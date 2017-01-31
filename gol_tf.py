@@ -11,23 +11,25 @@ gen = int(sys.argv[3])
 
 
 # Declare tf variables
-environment  = tf.Variable(tf.abs(tf.round(tf.truncated_normal(shape=(dim1, dim2), mean=0, stddev=0.5))), name='state')
-sum_filter   = tf.constant([[1., 1., 1.], [1., 0., 1.], [1., 1., 1.]])
+env  = tf.Variable(tf.abs(tf.round(tf.truncated_normal(shape=(dim1, dim2),
+                                                       mean=0, stddev=0.5))), name='state')
+neighbour_sum = tf.placeholder(tf.float32, shape=env.get_shape())
+alive_dead    = tf.placeholder(tf.float32, shape=env.get_shape())
+combin = tf.placeholder(tf.float32, shape=env.get_shape())
+and_   = tf.placeholder(tf.float32, shape=env.get_shape())
+less = tf.placeholder(tf.bool, shape=env.get_shape())
+greater = tf.placeholder(tf.bool, shape=env.get_shape())
 
-environment = tf.reshape(environment, [-1, dim1, dim2, 1])
-sum_filter  = tf.reshape(sum_filter, [3, 3, 1, 1])
+# Filter that sums neighbours 
+sum_filt = tf.constant([[1., 1., 1.], [1., 0., 1.], [1., 1., 1.]])
 
-neighbour_sum = tf.placeholder(tf.float32, shape=environment.get_shape())
-alive_dead    = tf.placeholder(tf.float32, shape=environment.get_shape())
-combin = tf.placeholder(tf.float32, shape=environment.get_shape())
-and_   = tf.placeholder(tf.float32, shape=environment.get_shape())
+# Reshape to allow for conv2D
+env = tf.reshape(env, [-1, dim1, dim2, 1])
+sum_filt  = tf.reshape(sum_filt, [3, 3, 1, 1])
 
-less = tf.placeholder(tf.bool, shape=environment.get_shape())
-greater = tf.placeholder(tf.bool, shape=environment.get_shape())
-
-
-neighbour_sum  = tf.nn.conv2d(environment, sum_filter, [1, 1, 1, 1], padding="SAME", name='neighbours')
-alive_dead     = tf.add(environment, 1)
+# Compile the Graph
+neighbour_sum  = tf.nn.conv2d(env, sum_filt, [1, 1, 1, 1], padding="SAME", name='neighbours')
+alive_dead     = tf.add(env, 1)
 combin = tf.multiply(neighbour_sum, alive_dead)
 greater = tf.greater(combin, tf.scalar_mul(6, tf.ones(shape=combin.get_shape())))
 less = tf.less(combin, tf.scalar_mul(3, tf.ones(shape=combin.get_shape())))
@@ -45,6 +47,6 @@ summary_writer = tf.summary.FileWriter('./tmp/logs/')
 for i in range(gen):
     sess.run(init)
     summary_writer.add_summary(merged, i)
-    environment = and_
+    env = and_
     time.sleep(0.5)
     
