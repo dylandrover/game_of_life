@@ -13,9 +13,11 @@ gen = int(sys.argv[3])
                                                        #mean=0, stddev=1))), name='state')
 
 seed = tf.Variable([[0, 0, 0, 0, 0],[0, 0, 1, 0, 0],[0, 0, 1, 0, 0],[0, 0, 1, 0, 0],[0, 0, 0, 0, 0]], dtype=tf.float32)
+
+env = tf.Variable(seed.initialized_value())
+
 neighbour_sum = tf.placeholder(tf.float32, shape=env.get_shape())
 
-env = 
 alive_dead    = tf.placeholder(tf.float32, shape=env.get_shape())
 combin = tf.placeholder(tf.float32, shape=env.get_shape())
 and_   = tf.placeholder(tf.float32, shape=env.get_shape())
@@ -34,12 +36,12 @@ neighbour_sum  = tf.nn.conv2d(env, sum_filt, [1, 1, 1, 1], padding="SAME", name=
 alive_dead     = tf.reshape(tf.add(env, 1), [dim1, dim2])
 neighbour_sum = tf.reshape(neighbour_sum, [dim1, dim2])
 
-combin = tf.multiply(neighbour_sum, alive_dead)
-less = tf.cast(tf.greater(combin, tf.scalar_mul(6, tf.ones(shape=combin.get_shape()))), tf.int32)
-greater = tf.cast(tf.greater_equal(combin, tf.scalar_mul(3, tf.ones(shape=combin.get_shape()))), tf.int32)
-and_ = tf.cast(tf.add(greater,less, name='new_state'), tf.int32)
-env = tf.reshape(env, [dim1, dim2])
-env = and_
+combine = tf.multiply(neighbour_sum, alive_dead)
+less    = tf.less_equal(combine, tf.scalar_mul(6, tf.ones(shape=combine.get_shape())))
+greater = tf.greater_equal(combine, tf.scalar_mul(3, tf.ones(shape=combine.get_shape())))
+and_    = tf.cast(tf.logical_and(greater,less, name='new_state'), tf.int32)
+
+
 '''
 life_summary = tf.summary.image('grid',and_)
 merged = tf.summary.merge_all(life_summary)
@@ -53,9 +55,13 @@ summary_writer = tf.summary.FileWriter('./tmp/logs/')
 
 for i in range(gen):
     sess.run(init)
+    sess.run(and_)
     #summary_writer.add_summary(merged, i)
     #env = and_
-    print(env.eval(session=sess))
+    # think about using a feed dictionary to update and give inputs
+    print(less.eval(session=sess))
+    print(greater.eval(session=sess))
     print(and_.eval(session=sess))
+    
     time.sleep(0.5)
     
