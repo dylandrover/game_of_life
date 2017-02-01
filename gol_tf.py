@@ -3,18 +3,26 @@ import os
 import sys
 import time
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 dim1 = int(sys.argv[1])
 dim2 = int(sys.argv[2])
 gen = int(sys.argv[3])
 
+fig = plt.figure()
+
 # Declare tf variables
-#env  = tf.Variable(tf.abs(tf.round(tf.truncated_normal(shape=(dim1, dim2),
-                                                       #mean=0, stddev=1))), name='state')
-
-seed = tf.Variable([[0, 0, 0, 0, 0],[0, 0, 1, 0, 0],[0, 0, 1, 0, 0],[0, 0, 1, 0, 0],[0, 0, 0, 0, 0]], dtype=tf.float32)
-
-env = tf.Variable(seed.initialized_value())
+env  = tf.Variable(tf.abs(tf.round(tf.truncated_normal(shape=(dim1, dim2),
+                                                       mean=0, stddev=0.5))), name='state')
+'''
+env = tf.Variable([[0, 0, 0, 0, 0, 0],
+                   [0, 0, 1, 1, 0, 0],
+                   [0, 1, 0, 0, 1, 0],
+                   [0, 0, 1, 0, 1, 0],
+                   [0, 0, 0, 1, 0, 0],
+                   [0, 0, 0, 0, 0, 0]], dtype=tf.float32)
+'''
 
 neighbour_sum = tf.placeholder(tf.float32, shape=env.get_shape())
 
@@ -28,36 +36,46 @@ greater = tf.placeholder(tf.bool, shape=env.get_shape())
 sum_filt = tf.constant([[1., 1., 1.], [1., 0., 1.], [1., 1., 1.]])
 
 # Reshape to allow for conv2D
-env = tf.reshape(env, [-1, dim1, dim2, 1])
+env_img = tf.reshape(env, [-1, dim1, dim2, 1])
 sum_filt  = tf.reshape(sum_filt, [3, 3, 1, 1])
 
 # Compile the Graph
-neighbour_sum  = tf.nn.conv2d(env, sum_filt, [1, 1, 1, 1], padding="SAME", name='neighbours')
-alive_dead     = tf.reshape(tf.add(env, 1), [dim1, dim2])
+neighbour_sum  = tf.nn.conv2d(env_img, sum_filt, [1, 1, 1, 1], padding="SAME", name='neighbours')
+alive_dead     = tf.reshape(tf.subtract(tf.scalar_mul(2, env), tf.ones([dim1,dim2])), [dim1, dim2])
 neighbour_sum = tf.reshape(neighbour_sum, [dim1, dim2])
 
 combine = tf.multiply(neighbour_sum, alive_dead)
-less    = tf.less_equal(combine, tf.scalar_mul(6, tf.ones(shape=combine.get_shape())))
-greater = tf.greater_equal(combine, tf.scalar_mul(3, tf.ones(shape=combine.get_shape())))
-env     = tf.cast(tf.logical_and(greater,less, name='new_state'), tf.int32)
+
+equals0  = tf.equal(combine, tf.scalar_mul(-3, tf.ones(shape=combine.get_shape())))
+equals1 = tf.equal(combine, tf.scalar_mul(3, tf.ones(shape=combine.get_shape())))
+equals2 = tf.equal(combine, tf.scalar_mul(2, tf.ones(shape=combine.get_shape())))
+
+temp    = tf.logical_or(equals1,equals2)
+new_val = tf.cast(tf.logical_or(temp, equals0, name='new_state'), tf.float32)
+
+update = env.assign(new_val)
 
 '''
 life_summary = tf.summary.image('grid',and_)
 merged = tf.summary.merge_all(life_summary)
+summary_writer = tf.summary.FileWriter('./tmp/logs/')
 '''
 
-init = tf.global_variables_initializer()
+ims = []
 
-sess = tf.InteractiveSession()
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    print(sess.run(env))
+    for i in range(gen):
+        img = sess.run(update)
+        img = plt.imshow(img, cmap='gray')
+        ims.append([img])
 
-summary_writer = tf.summary.FileWriter('./tmp/logs/')
-
-sess.run(init)
-
-for i in range(gen):
-    sess.run(env)
+ani = animation.ArtistAnimation(fig, ims, interval=50, blit=False,
+                                repeat_delay=2000)
+plt.show()
     #summary_writer.add_summary(merged, i)
     # think about using a feed dictionary to update and give inputs
     
-    time.sleep(0.5)
+
     
