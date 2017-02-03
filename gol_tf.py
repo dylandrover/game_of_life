@@ -9,8 +9,11 @@ import matplotlib.animation as animation
 dim1 = int(sys.argv[1])
 dim2 = int(sys.argv[2])
 gen = int(sys.argv[3])
+flag = None
 
-fig = plt.figure()
+if(len(sys.argv) == 5):
+    flag = sys.argv[4]
+    fig = plt.figure()
 
 # Declare tf variables
 env  = tf.Variable(tf.abs(tf.round(tf.truncated_normal(shape=(dim1, dim2),
@@ -52,30 +55,32 @@ equals2 = tf.equal(combine, tf.scalar_mul(2, tf.ones(shape=combine.get_shape()))
 
 temp    = tf.logical_or(equals1,equals2)
 new_val = tf.cast(tf.logical_or(temp, equals0, name='new_state'), tf.float32)
+env_image = tf.reshape(new_val, [1, dim1, dim2, 1])
 
 update = env.assign(new_val)
 
-'''
-life_summary = tf.summary.image('grid',and_)
-merged = tf.summary.merge_all(life_summary)
-summary_writer = tf.summary.FileWriter('./tmp/logs/')
-'''
+life_summary = tf.summary.image("board", env_image)
+live_summary = tf.summary.scalar("sum", tf.reduce_sum(new_val))
 
-ims = []
+merged = tf.summary.merge_all()
+summary_writer = tf.summary.FileWriter('./tmp/logs/')
+
+if(flag):
+    ims = []
 
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    print(sess.run(env))
     for i in range(gen):
-        img = sess.run(update)
-        img = plt.imshow(img, cmap='gray')
-        ims.append([img])
+        _, summary = sess.run([update, merged])
+        summary_writer.add_summary(summary, i)
+        if(flag):
+            img = plt.imshow(img, cmap='gray')
+            ims.append([img])
 
-ani = animation.ArtistAnimation(fig, ims, interval=50, blit=False,
-                                repeat_delay=2000)
-plt.show()
-    #summary_writer.add_summary(merged, i)
-    # think about using a feed dictionary to update and give inputs
+if(flag):
+    ani = animation.ArtistAnimation(fig, ims, interval=100, blit=True, repeat_delay=50)
+    ani.save('life.mp4')
+
     
 
     
